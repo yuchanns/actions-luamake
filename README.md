@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: yuchanns/actions-luamake@v1
         with:
-          version: '1.7'
+          version: 'v1.7'
       - run: luamake help
 ```
 
