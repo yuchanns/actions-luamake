@@ -89,8 +89,12 @@ runs:
         if [ -f ".luamake-temp/$LUAMAKE_BINARY" ]; then
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             cp ".luamake-temp/$LUAMAKE_BINARY" "$TARGET_DIR/"
+            cp ".luamake-temp/main.lua" "$TARGET_DIR/"
+            cp -r ".luamake-temp/scripts" "$TARGET_DIR/"
           else
             sudo cp ".luamake-temp/$LUAMAKE_BINARY" "$TARGET_DIR/" 2>/dev/null || cp ".luamake-temp/$LUAMAKE_BINARY" "$TARGET_DIR/"
+            sudo cp ".luamake-temp/main.lua" "$TARGET_DIR/" 2>/dev/null || cp ".luamake-temp/main.lua" "$TARGET_DIR/"
+            sudo cp -r ".luamake-temp/scripts" "$TARGET_DIR/" 2>/dev/null || cp -r ".luamake-temp/scripts" "$TARGET_DIR/"
             sudo chmod +x "$TARGET_DIR/$LUAMAKE_BINARY" 2>/dev/null || chmod +x "$TARGET_DIR/$LUAMAKE_BINARY"
           fi
           echo "luamake-path=$TARGET_DIR" >> $GITHUB_OUTPUT
@@ -108,4 +112,4 @@ runs:
         if [[ "$RUNNER_OS" == "Windows" ]]; then
           where luamake || echo "luamake.exe installed to $TARGET_DIR"
         fi
-        luamake help 2>/dev/null || echo "luamake installed successfully"
+        luamake help
