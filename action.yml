@@ -33,9 +33,33 @@ runs:
           }
           core.setOutput('tag', tag);
           console.log('Using tag:', tag);
+    - id: binary-path
+      shell: bash
+      run: |
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          TARGET_DIR="C:/Windows/System32"
+          LUAMAKE_BINARY="luamake.exe"
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          TARGET_DIR="/usr/local/bin"
+          LUAMAKE_BINARY="luamake"
+        else  # Linux
+          TARGET_DIR="/usr/local/bin"
+          LUAMAKE_BINARY="luamake"
+        fi
+        echo "target_dir=$TARGET_DIR" >> $GITHUB_OUTPUT
+        echo "luamake_binary=$LUAMAKE_BINARY" >> $GITHUB_OUTPUT
+
+    - name: Cache luamake
+      uses: actions/cache@v4
+      id: cache
+      with:
+        path: |
+          ${{steps.binary-path.outputs.target_dir}}/${{ steps.binary-path.outputs.luamake_binary }}
+        key: ${{ runner.os }}-luamake-${{ steps.get-version.outputs.tag }}
 
     - name: Checkout luamake source with submodules
       uses: actions/checkout@v4
+      if: steps.cache.outputs.cache-hit != 'true'
       with:
         repository: 'actboy168/luamake'
         ref: ${{ steps.get-version.outputs.tag }}
@@ -43,17 +67,18 @@ runs:
         path: .luamake-temp
 
     - name: Setup dependencies (Linux)
-      if: runner.os == 'Linux'
+      if: runner.os == 'Linux' && steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         sudo apt update
         sudo apt install gcc g++ ninja-build binutils-dev libunwind-dev -y
 
     - name: Setup MSVC (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && steps.cache.outputs.cache-hit != 'true'
       uses: ilammy/msvc-dev-cmd@v1
 
     - name: Build luamake
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       working-directory: .luamake-temp
       run: |
@@ -67,19 +92,12 @@ runs:
 
     - name: Install luamake to system and cleanup
       id: setup
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
+      env:
+        TARGET_DIR: ${{ steps.binary-path.outputs.target_dir }}
+        LUAMAKE_BINARY: ${{ steps.binary-path.outputs.luamake_binary }}
       run: |
-        if [[ "$RUNNER_OS" == "Windows" ]]; then
-          TARGET_DIR="C:/Windows/System32"
-          LUAMAKE_BINARY="luamake.exe"
-        elif [[ "$RUNNER_OS" == "macOS" ]]; then
-          TARGET_DIR="/usr/local/bin"
-          LUAMAKE_BINARY="luamake"
-        else  # Linux
-          TARGET_DIR="/usr/local/bin"
-          LUAMAKE_BINARY="luamake"
-        fi
-        
         if [[ "$RUNNER_OS" == "Windows" ]]; then
           echo "Using Windows system directory: $TARGET_DIR"
         else
@@ -107,7 +125,9 @@ runs:
         
         rm -rf .luamake-temp
         echo "🧹 Cleaned up source directory"
-        
+    - name: Verify luamake installation 
+      shell: bash
+      run: |
         which luamake || echo "Checking luamake installation..."
         if [[ "$RUNNER_OS" == "Windows" ]]; then
           where luamake || echo "luamake.exe installed to $TARGET_DIR"
