@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      luamake-version:
+        description: 'Version of luamake to use'
+        required: false
+        default: 'latest'
   schedule: [cron: "40 1 * * *"]
 
 permissions:
