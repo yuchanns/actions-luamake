@@ -16,51 +16,31 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Get luamake download URL
-      id: get-url
+    - name: Get luamake version tag
+      id: get-version
       uses: actions/github-script@v7
       with:
         script: |
-          let release;
+          let tag;
           if ('${{ inputs.luamake-version }}' === 'latest') {
-            release = await github.rest.repos.getLatestRelease({
+            const release = await github.rest.repos.getLatestRelease({
               owner: 'actboy168',
               repo: 'luamake'
             });
+            tag = release.data.tag_name;
           } else {
-            release = await github.rest.repos.getReleaseByTag({
-              owner: 'actboy168',
-              repo: 'luamake',
-              tag: '${{ inputs.luamake-version }}'
-            });
+            tag = '${{ inputs.luamake-version }}';
           }
-          
-          const downloadUrl = release.data.zipball_url;
-          core.setOutput('download-url', downloadUrl);
-          console.log('Download URL:', downloadUrl);
+          core.setOutput('tag', tag);
+          console.log('Using tag:', tag);
 
-    - name: Download and extract luamake source
-      shell: bash
-      run: |
-        TEMP_DIR="${{ runner.temp }}/luamake"
-        mkdir -p "$TEMP_DIR"
-        cd "$TEMP_DIR"
-        
-        curl -L "${{ steps.get-url.outputs.download-url }}" -o luamake-source.zip
-        
-        unzip luamake-source.zip
-        
-        extracted_dir=$(find . -maxdepth 1 -type d -name "actboy168-luamake-*" | head -n 1)
-        if [ -n "$extracted_dir" ]; then
-          mv "$extracted_dir"/* .
-          mv "$extracted_dir"/.* . 2>/dev/null || true
-          rmdir "$extracted_dir"
-        fi
-        
-        rm luamake-source.zip
-        
-        echo "LUAMAKE_TEMP_DIR=$TEMP_DIR" >> $GITHUB_ENV
-        ls -la
+    - name: Checkout luamake source with submodules
+      uses: actions/checkout@v4
+      with:
+        repository: 'actboy168/luamake'
+        ref: ${{ steps.get-version.outputs.tag }}
+        submodules: recursive
+        path: .luamake-temp
 
     - name: Setup dependencies (Linux)
       if: runner.os == 'Linux'
@@ -75,9 +55,8 @@ runs:
 
     - name: Build luamake
       shell: bash
-      working-directory: ${{ env.LUAMAKE_TEMP_DIR }}
+      working-directory: .luamake-temp
       run: |
-        git submodule update --init --recursive
         if [[ "$RUNNER_OS" == "Windows" ]]; then
           chmod +x compile/install.bat 2>/dev/null || true
           compile/install.bat
@@ -107,23 +86,23 @@ runs:
           sudo mkdir -p "$TARGET_DIR" 2>/dev/null || mkdir -p "$TARGET_DIR"
         fi
         
-        if [ -f "${{ env.LUAMAKE_TEMP_DIR }}/$LUAMAKE_BINARY" ]; then
+        if [ -f ".luamake-temp/$LUAMAKE_BINARY" ]; then
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            cp "${{ env.LUAMAKE_TEMP_DIR }}/$LUAMAKE_BINARY" "$TARGET_DIR/"
+            cp ".luamake-temp/$LUAMAKE_BINARY" "$TARGET_DIR/"
           else
-            sudo cp "${{ env.LUAMAKE_TEMP_DIR }}/$LUAMAKE_BINARY" "$TARGET_DIR/" 2>/dev/null || cp "${{ env.LUAMAKE_TEMP_DIR }}/$LUAMAKE_BINARY" "$TARGET_DIR/"
+            sudo cp ".luamake-temp/$LUAMAKE_BINARY" "$TARGET_DIR/" 2>/dev/null || cp ".luamake-temp/$LUAMAKE_BINARY" "$TARGET_DIR/"
             sudo chmod +x "$TARGET_DIR/$LUAMAKE_BINARY" 2>/dev/null || chmod +x "$TARGET_DIR/$LUAMAKE_BINARY"
           fi
           echo "luamake-path=$TARGET_DIR" >> $GITHUB_OUTPUT
           echo "✅ luamake installed to $TARGET_DIR"
         else
-          echo "❌ luamake binary not found at ${{ env.LUAMAKE_TEMP_DIR }}/$LUAMAKE_BINARY"
-          ls -la "${{ env.LUAMAKE_TEMP_DIR }}/"
+          echo "❌ luamake binary not found at .luamake-temp/$LUAMAKE_BINARY"
+          ls -la .luamake-temp/
           exit 1
         fi
         
-        rm -rf "${{ env.LUAMAKE_TEMP_DIR }}"
-        echo "🧹 Cleaned up temporary directory"
+        rm -rf .luamake-temp
+        echo "🧹 Cleaned up source directory"
         
         which luamake || echo "Checking luamake installation..."
         if [[ "$RUNNER_OS" == "Windows" ]]; then
