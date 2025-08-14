@@ -1,6 +1,9 @@
 name: 'Setup luamake'
 description: 'Build and setup luamake for different operating systems'
 author: 'yuchanns'
+branding:
+  icon: activity
+  color: purple
 
 inputs:
   luamake-version:
