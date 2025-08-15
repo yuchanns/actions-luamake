@@ -7,9 +7,9 @@ branding:
 
 inputs:
   luamake-version:
-    description: 'luamake release tag version'
+    description: 'luamake tag or branch to checkout'
     required: false
-    default: 'latest'
+    default: ''
 
 outputs:
   luamake-path:
@@ -19,23 +19,6 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Get luamake version tag
-      id: get-version
-      uses: actions/github-script@v7
-      with:
-        script: |
-          let tag;
-          if ('${{ inputs.luamake-version }}' === 'latest') {
-            const release = await github.rest.repos.getLatestRelease({
-              owner: 'actboy168',
-              repo: 'luamake'
-            });
-            tag = release.data.tag_name;
-          } else {
-            tag = '${{ inputs.luamake-version }}';
-          }
-          core.setOutput('tag', tag);
-          console.log('Using tag:', tag);
     - id: binary-path
       shell: bash
       run: |
@@ -60,14 +43,14 @@ runs:
           ${{steps.binary-path.outputs.target_dir}}/${{ steps.binary-path.outputs.luamake_binary }}
           ${{steps.binary-path.outputs.target_dir}}/main.lua
           ${{steps.binary-path.outputs.target_dir}}/scripts
-        key: ${{ runner.os }}-luamake-${{ steps.get-version.outputs.tag }}
+        key: ${{ runner.os }}-luamake-${{ inputs.luamake-version }}
 
     - name: Checkout luamake source with submodules
       uses: actions/checkout@v4
       if: steps.cache.outputs.cache-hit != 'true'
       with:
         repository: 'actboy168/luamake'
-        ref: ${{ steps.get-version.outputs.tag }}
+        ref: ${{ inputs.luamake-version }}
         submodules: recursive
         path: .luamake-temp
 
