@@ -60,7 +60,7 @@ runs:
           ${{steps.binary-path.outputs.target_dir}}/${{ steps.binary-path.outputs.luamake_binary }}
           ${{steps.binary-path.outputs.target_dir}}/main.lua
           ${{steps.binary-path.outputs.target_dir}}/scripts
-        key: ${{ runner.os }}-luamake-${{ steps.get-version.outputs.tag }}
+        key: ${{ runner.os }}-${{ runner.arch }}-luamake-${{ steps.get-version.outputs.tag }}
 
     - name: Checkout luamake source with submodules
       uses: actions/checkout@v4
