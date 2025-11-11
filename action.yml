@@ -24,47 +24,10 @@ runs:
       uses: actions/github-script@v7
       with:
         script: |
-          const isSha = (s) => /^[0-9a-f]{40}$/i.test(s);
-          const owner = 'actboy168';
-          const repo = 'luamake';
-          let tag, commit;
-          if ('${{ inputs.luamake-version }}' === 'latest') {
-            const release = await github.rest.repos.getLatestRelease({
-              owner,
-              repo
-            });
-            tag = release.data.tag_name;
-          } else {
-            tag = '${{ inputs.luamake-version }}';
-          }
-          if (isSha(tag)) {
-            await github.rest.repos.getCommit({
-              owner,
-              repo,
-              ref: tag
-            });
-            commit = tag;
-            core.info(`Input is already a commit SHA: ${commit}`);
-          } else {
-            const { data: ref } = await github.rest.git.getRef({
-              owner,
-              repo,
-              ref: `tags/${tag}`
-            });
-            let sha = ref.object.sha;
-            if (ref.object.type === 'tag') {
-              const { data: tagObj } = await github.rest.git.getTag({
-                owner,
-                repo,
-                tag_sha: sha
-              });
-              sha = tagObj.object.sha;
-            }
-            commit = sha;
-            core.info(`Resolved tag ${tag} -> commit ${commit}`);
-          }
-          core.setOutput('commit', commit);
-          console.log(`Using commit: ${commit}`);
+          const getLuamakeVersion = require('./scripts/get-luamake-version.js');
+          await getLuamakeVersion({ github, core, context });
+      env:
+        LUAMAKE_VERSION: ${{ inputs.luamake-version }}
     - id: binary-path
       shell: bash
       run: |
