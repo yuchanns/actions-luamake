@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: yuchanns/actions-luamake@v1
         with:
-          version: 'v1.7'
+          luamake-version: 'v1.7'
       - run: luamake help
 ```
 
@@ -29,7 +29,7 @@ All inputs are optional.
 
 | Name | Description |
 |------|-------------|
-| `version` | The version of luamake to install. Defaults to `latest`. |
+| `luamake-version` | The version of luamake to install. Defaults to `latest`. |
 
 ## Outputs
 
