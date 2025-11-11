@@ -24,18 +24,10 @@ runs:
       uses: actions/github-script@v7
       with:
         script: |
-          let tag;
-          if ('${{ inputs.luamake-version }}' === 'latest') {
-            const release = await github.rest.repos.getLatestRelease({
-              owner: 'actboy168',
-              repo: 'luamake'
-            });
-            tag = release.data.tag_name;
-          } else {
-            tag = '${{ inputs.luamake-version }}';
-          }
-          core.setOutput('tag', tag);
-          console.log('Using tag:', tag);
+          const getLuamakeVersion = require('./scripts/get-luamake-version.js');
+          await getLuamakeVersion({ github, core, context });
+      env:
+        LUAMAKE_VERSION: ${{ inputs.luamake-version }}
     - id: binary-path
       shell: bash
       run: |
@@ -60,7 +52,7 @@ runs:
           ${{steps.binary-path.outputs.target_dir}}/${{ steps.binary-path.outputs.luamake_binary }}
           ${{steps.binary-path.outputs.target_dir}}/main.lua
           ${{steps.binary-path.outputs.target_dir}}/scripts
-        key: ${{ runner.os }}-${{ runner.arch }}-luamake-${{ steps.get-version.outputs.tag }}
+        key: ${{ runner.os }}-${{ runner.arch }}-luamake-${{ steps.get-version.outputs.commit }}
 
     - name: Checkout luamake source with submodules
       uses: actions/checkout@v4
