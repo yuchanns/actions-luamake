@@ -10,6 +10,10 @@ inputs:
     description: 'luamake release tag version'
     required: false
     default: 'latest'
+  run-tests:
+    description: 'Whether to run upstream bee.lua tests while building luamake'
+    required: false
+    default: 'true'
 
 outputs:
   luamake-path:
@@ -116,12 +120,16 @@ runs:
       shell: bash
       working-directory: .luamake-temp
       run: |
+        BUILD_TARGET=""
+        if [[ "${{ inputs.run-tests }}" != "true" ]]; then
+          BUILD_TARGET=" notest"
+        fi
         if [[ "$RUNNER_OS" == "Windows" ]]; then
           chmod +x compile/install.bat 2>/dev/null || true
-          compile/install.bat
+          compile/install.bat$BUILD_TARGET
         else
           chmod +x compile/install.sh
-          compile/install.sh
+          compile/install.sh$BUILD_TARGET
         fi
 
     - name: Install luamake to system and cleanup
