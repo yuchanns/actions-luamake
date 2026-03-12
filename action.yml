@@ -13,7 +13,7 @@ inputs:
   run-tests:
     description: 'Whether to run upstream bee.lua tests while building luamake'
     required: false
-    default: 'true'
+    default: 'false'
 
 outputs:
   luamake-path:

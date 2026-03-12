@@ -20,7 +20,6 @@ jobs:
       - uses: yuchanns/actions-luamake@v1
         with:
           luamake-version: 'v1.7'
-          run-tests: 'false'
       - run: luamake help
 ```
 
@@ -31,7 +30,7 @@ All inputs are optional.
 | Name | Description |
 |------|-------------|
 | `luamake-version` | The version of luamake to install. Defaults to `latest`. |
-| `run-tests` | Whether to run upstream `bee.lua` tests while building `luamake`. Defaults to `true`. Set to `false` to build with `notest`. |
+| `run-tests` | Whether to run upstream `bee.lua` tests while building `luamake`. Defaults to `false`, which builds with `notest`. Set to `true` to run tests during build. |
 
 ## Outputs
 
