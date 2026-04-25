@@ -25,7 +25,7 @@ runs:
   steps:
     - name: Get luamake version tag
       id: get-version
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       with:
         script: |
           const isSha = (s) => /^[0-9a-f]{40}$/i.test(s);
@@ -86,21 +86,21 @@ runs:
         echo "luamake_binary=$LUAMAKE_BINARY" >> $GITHUB_OUTPUT
 
     - name: Cache luamake
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       id: cache
       with:
         path: |
           ${{steps.binary-path.outputs.target_dir}}/${{ steps.binary-path.outputs.luamake_binary }}
           ${{steps.binary-path.outputs.target_dir}}/main.lua
           ${{steps.binary-path.outputs.target_dir}}/scripts
-        key: ${{ runner.os }}-${{ runner.arch }}-luamake-${{ steps.get-version.outputs.commit }}
+        key: ${{ runner.os }}-${{ runner.arch }}-luamake-v1-${{ steps.get-version.outputs.commit }}
 
     - name: Checkout luamake source with submodules
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       if: steps.cache.outputs.cache-hit != 'true'
       with:
         repository: 'actboy168/luamake'
-        ref: ${{ steps.get-version.outputs.tag }}
+        ref: ${{ steps.get-version.outputs.commit }}
         submodules: recursive
         path: .luamake-temp
 
