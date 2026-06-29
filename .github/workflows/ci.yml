@@ -34,3 +34,34 @@ jobs:
         run: echo '${{steps.luamake.outputs.luamake-path}}'
       - run: |
           luamake help
+
+  standalone:
+    name: standalone luamake on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Get latest luamake commit
+        id: latest-luamake
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const { data: commit } = await github.rest.repos.getCommit({
+              owner: 'actboy168',
+              repo: 'luamake',
+              ref: 'master'
+            });
+            core.setOutput('commit', commit.sha);
+      - uses: ./
+        id: luamake
+        name: Run yuchanns/actions-luamake
+        with:
+          luamake-version: ${{ steps.latest-luamake.outputs.commit }}
+          standalone: 'true'
+      - name: echo ${{'${{steps.luamake.outputs.luamake-path}}'}}
+        run: echo '${{steps.luamake.outputs.luamake-path}}'
+      - run: |
+          luamake help
