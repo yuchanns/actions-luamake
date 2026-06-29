@@ -14,6 +14,10 @@ inputs:
     description: 'Whether to run upstream bee.lua tests while building luamake'
     required: false
     default: 'false'
+  standalone:
+    description: 'Whether to build the standalone single binary with embedded scripts'
+    required: false
+    default: 'false'
 
 outputs:
   luamake-path:
@@ -93,7 +97,7 @@ runs:
           ${{steps.binary-path.outputs.target_dir}}/${{ steps.binary-path.outputs.luamake_binary }}
           ${{steps.binary-path.outputs.target_dir}}/main.lua
           ${{steps.binary-path.outputs.target_dir}}/scripts
-        key: ${{ runner.os }}-${{ runner.arch }}-luamake-v1-${{ steps.get-version.outputs.commit }}
+        key: ${{ runner.os }}-${{ runner.arch }}-luamake-v1-${{ steps.get-version.outputs.commit }}-${{ inputs.standalone }}
 
     - name: Checkout luamake source with submodules
       uses: actions/checkout@v6
@@ -126,10 +130,26 @@ runs:
         fi
         if [[ "$RUNNER_OS" == "Windows" ]]; then
           chmod +x compile/install.bat 2>/dev/null || true
-          compile/install.bat$BUILD_TARGET
+          if [[ "${{ inputs.standalone }}" == "true" ]]; then
+            compile/install.bat$BUILD_TARGET
+            ./luamake.exe init -prebuilt -builddir build/msvc -hostos windows
+            compile/build.bat lua2c
+          else
+            compile/install.bat$BUILD_TARGET
+          fi
         else
           chmod +x compile/install.sh
-          compile/install.sh$BUILD_TARGET
+          if [[ "${{ inputs.standalone }}" == "true" ]]; then
+            compile/install.sh$BUILD_TARGET
+            if [[ "$RUNNER_OS" == "macOS" ]]; then
+              ./luamake init -prebuilt -builddir build/macos -hostos macos
+            else
+              ./luamake init -prebuilt -builddir build/linux -hostos linux
+            fi
+            compile/build.sh lua2c
+          else
+            compile/install.sh$BUILD_TARGET
+          fi
         fi
 
     - name: Install luamake to system and cleanup
@@ -139,6 +159,7 @@ runs:
       env:
         TARGET_DIR: ${{ steps.binary-path.outputs.target_dir }}
         LUAMAKE_BINARY: ${{ steps.binary-path.outputs.luamake_binary }}
+        BUILD_STANDALONE: ${{ inputs.standalone }}
       run: |
         if [[ "$RUNNER_OS" == "Windows" ]]; then
           echo "Using Windows system directory: $TARGET_DIR"
@@ -146,27 +167,41 @@ runs:
           sudo mkdir -p "$TARGET_DIR" 2>/dev/null || mkdir -p "$TARGET_DIR"
         fi
         
-        if [ -f ".luamake-temp/$LUAMAKE_BINARY" ]; then
+        if [[ "$BUILD_STANDALONE" == "true" ]]; then
+          SOURCE_BINARY=".luamake-temp/luamake_lua2c"
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            cp ".luamake-temp/$LUAMAKE_BINARY" "$TARGET_DIR/"
-            cp ".luamake-temp/main.lua" "$TARGET_DIR/"
-            cp -r ".luamake-temp/scripts" "$TARGET_DIR/"
+            SOURCE_BINARY="${SOURCE_BINARY}.exe"
+          fi
+        else
+          SOURCE_BINARY=".luamake-temp/$LUAMAKE_BINARY"
+        fi
+
+        if [ -f "$SOURCE_BINARY" ]; then
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            cp "$SOURCE_BINARY" "$TARGET_DIR/$LUAMAKE_BINARY"
+            if [[ "$BUILD_STANDALONE" != "true" ]]; then
+              cp ".luamake-temp/main.lua" "$TARGET_DIR/"
+              cp -r ".luamake-temp/scripts" "$TARGET_DIR/"
+            fi
           else
-            sudo cp ".luamake-temp/$LUAMAKE_BINARY" "$TARGET_DIR/" 2>/dev/null || cp ".luamake-temp/$LUAMAKE_BINARY" "$TARGET_DIR/"
-            sudo cp ".luamake-temp/main.lua" "$TARGET_DIR/" 2>/dev/null || cp ".luamake-temp/main.lua" "$TARGET_DIR/"
-            sudo cp -r ".luamake-temp/scripts" "$TARGET_DIR/" 2>/dev/null || cp -r ".luamake-temp/scripts" "$TARGET_DIR/"
+            sudo cp "$SOURCE_BINARY" "$TARGET_DIR/$LUAMAKE_BINARY" 2>/dev/null || cp "$SOURCE_BINARY" "$TARGET_DIR/$LUAMAKE_BINARY"
+            if [[ "$BUILD_STANDALONE" != "true" ]]; then
+              sudo cp ".luamake-temp/main.lua" "$TARGET_DIR/" 2>/dev/null || cp ".luamake-temp/main.lua" "$TARGET_DIR/"
+              sudo cp -r ".luamake-temp/scripts" "$TARGET_DIR/" 2>/dev/null || cp -r ".luamake-temp/scripts" "$TARGET_DIR/"
+            fi
             sudo chmod +x "$TARGET_DIR/$LUAMAKE_BINARY" 2>/dev/null || chmod +x "$TARGET_DIR/$LUAMAKE_BINARY"
           fi
           echo "luamake-path=$TARGET_DIR" >> $GITHUB_OUTPUT
           echo "✅ luamake installed to $TARGET_DIR"
         else
-          echo "❌ luamake binary not found at .luamake-temp/$LUAMAKE_BINARY"
+          echo "❌ luamake binary not found at $SOURCE_BINARY"
           ls -la .luamake-temp/
           exit 1
         fi
         
         rm -rf .luamake-temp
         echo "🧹 Cleaned up source directory"
+
     - name: Verify luamake installation 
       shell: bash
       run: |
