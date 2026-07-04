@@ -90,7 +90,7 @@ runs:
         echo "luamake_binary=$LUAMAKE_BINARY" >> $GITHUB_OUTPUT
 
     - name: Cache luamake
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       id: cache
       with:
         path: |
@@ -100,7 +100,7 @@ runs:
         key: ${{ runner.os }}-${{ runner.arch }}-luamake-v1-${{ steps.get-version.outputs.commit }}-${{ inputs.standalone }}
 
     - name: Checkout luamake source with submodules
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       if: steps.cache.outputs.cache-hit != 'true'
       with:
         repository: 'actboy168/luamake'
@@ -115,9 +115,33 @@ runs:
         sudo apt update
         sudo apt install gcc g++ ninja-build binutils-dev libunwind-dev -y
 
+    - name: Resolve MSVC architecture (Windows)
+      id: msvc-arch
+      if: runner.os == 'Windows' && steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        case "$RUNNER_ARCH" in
+          X64)
+            arch=x64
+            ;;
+          X86)
+            arch=x86
+            ;;
+          ARM64)
+            arch=amd64_arm64
+            ;;
+          *)
+            echo "Unsupported Windows runner architecture: $RUNNER_ARCH" >&2
+            exit 1
+            ;;
+        esac
+        echo "arch=$arch" >> "$GITHUB_OUTPUT"
+
     - name: Setup MSVC (Windows)
       if: runner.os == 'Windows' && steps.cache.outputs.cache-hit != 'true'
-      uses: ilammy/msvc-dev-cmd@v1
+      uses: TheMrMilchmann/setup-msvc-dev@v4
+      with:
+        arch: ${{ steps.msvc-arch.outputs.arch }}
 
     - name: Build luamake
       if: steps.cache.outputs.cache-hit != 'true'

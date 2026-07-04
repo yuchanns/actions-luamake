@@ -16,7 +16,7 @@ jobs:
     name: luamake help
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: yuchanns/actions-luamake@v1
         with:
           luamake-version: 'v1.7'
